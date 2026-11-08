@@ -1,0 +1,35 @@
+{
+  "id": null,
+  "name": "High CPU Utilization on RDS Primary",
+  "type": "metric alert",
+  "query": "avg(last_5m):avg:aws.rds.cpuutilization{dbinstanceidentifier:ecommerce-db-primary} > 80",
+  "message": "{{#is_alert}}\n🚨 **Alert: High CPU Utilization on RDS Primary**\n\nRDS Primary CPU utilization is above 80% on {{host.name}}.\n\nThis may indicate the primary database is under heavy load. Please investigate immediately.\n\n**Current Value:** {{value}}%\n**Threshold:** {{threshold}}%\n\n**Possible Causes:**\n- Increased query volume or expensive queries\n- Missing database indexes\n- Connection pool exhaustion\n- Background maintenance tasks\n\n**Recommended Actions:**\n1. Check active queries: `SELECT * FROM pg_stat_activity WHERE state = 'active';`\n2. Review slow query logs in Datadog APM\n3. Consider scaling up the RDS instance or adding read replicas\n4. Check if any recent deployments introduced inefficient queries\n\n@pagerduty @slack-alerts\n{{/is_alert}}\n\n{{#is_warning}}\n⚠️ **Warning: Elevated CPU Utilization on RDS Primary**\n\nRDS Primary CPU utilization is above 70% on {{host.name}}.\n\nCurrent Value: {{value}}%\n\nMonitor and be prepared to take action if utilization continues to rise.\n\n@slack-alerts\n{{/is_warning}}\n\n{{#is_recovery}}\n✅ **Recovered: RDS Primary CPU Utilization**\n\nCPU utilization on {{host.name}} has returned to normal levels.\n\nCurrent Value: {{value}}%\n{{/is_recovery}}",
+  "tags": [
+    "env:production",
+    "service:ecommerce-api",
+    "team:backend"
+  ],
+  "options": {
+    "thresholds": {
+      "critical": 80,
+      "warning": 70
+    },
+    "notify_no_data": false,
+    "renotify_interval": 30,
+    "renotify_occurrences": 5,
+    "renotify_statuses": ["alert"],
+    "evaluation_delay": 900,
+    "new_group_delay": 60,
+    "include_tags": true,
+    "notify_audit": false,
+    "on_missing_data": "default",
+    "escalation_message": "CPU utilization on RDS Primary is still above {{threshold}}%. Immediate investigation required. @pagerduty",
+    "silenced": {}
+  },
+  "priority": 1,
+  "restricted_roles": null,
+  "multi": false,
+  "created": "2024-01-15T10:30:00.000000+00:00",
+  "modified": "2024-01-15T10:30:00.000000+00:00",
+  "overall_state": "No Data"
+}
