@@ -1,0 +1,6 @@
+{
+  "aws_region": "us-east-1",
+  "rds_primary_identifier": "ecommerce-db-primary",
+  "rds_replica_identifier": "ecommerce-db-replica",
+  "datadog_dashboard_url": "https://app.datadoghq.com/dashboard/your-dashboard-id"
+}
