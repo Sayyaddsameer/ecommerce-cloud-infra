@@ -1,0 +1,92 @@
+version: "3.8"
+services:
+
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: ecommerce-api
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      - PORT=8080
+      - DB_WRITER_HOST=db
+      - DB_READER_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-ecommerce_user}
+      - DB_PASSWORD=${DB_PASSWORD:-ecommerce_pass}
+      - DB_NAME=${DB_NAME:-ecommerce_db}
+      - DD_AGENT_HOST=datadog-agent
+      - DD_DOGSTATSD_PORT=8125
+      - DD_SERVICE=${DD_SERVICE:-ecommerce-api}
+      - DD_ENV=${DD_ENV:-development}
+      - DD_LOGS_INJECTION=${DD_LOGS_INJECTION:-true}
+      - DD_PROFILING_ENABLED=${DD_PROFILING_ENABLED:-true}
+      - DD_TRACE_AGENT_PORT=8126
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "nodejs", "service": "ecommerce-api"}]'
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  db:
+    image: postgres:14-alpine
+    container_name: ecommerce-db
+    environment:
+      - POSTGRES_USER=${DB_USER:-ecommerce_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-ecommerce_pass}
+      - POSTGRES_DB=${DB_NAME:-ecommerce_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./seeds/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ecommerce_user} -d ${DB_NAME:-ecommerce_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  datadog-agent:
+    image: gcr.io/datadoghq/agent:7
+    container_name: datadog-agent
+    environment:
+      - DD_API_KEY=${DD_API_KEY}
+      - DD_SITE=${DD_SITE:-datadoghq.com}
+      - DD_APM_ENABLED=true
+      - DD_APM_NON_LOCAL_TRAFFIC=true
+      - DD_LOGS_ENABLED=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+      - DD_PROCESS_AGENT_ENABLED=true
+      - DD_CONTAINER_EXCLUDE="name:datadog-agent"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+    ports:
+      - "8126:8126"
+      - "8125:8125/udp"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
